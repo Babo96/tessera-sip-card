@@ -1,0 +1,53 @@
+{
+  "name": "tessera-sip-card",
+  "version": "0.1.0",
+  "description": "A SIP.js doorbell card for Home Assistant, styled like Tessera and built for DoorPi/Asterisk.",
+  "type": "module",
+  "main": "dist/tessera-sip-card.js",
+  "module": "dist/tessera-sip-card.js",
+  "files": [
+    "dist"
+  ],
+  "scripts": {
+    "dev": "vite",
+    "typecheck": "tsc --noEmit",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "build": "npm run typecheck && vite build",
+    "preview": "vite preview",
+    "format": "prettier --write ."
+  },
+  "keywords": [
+    "home-assistant",
+    "homeassistant",
+    "lovelace",
+    "sip",
+    "sip.js",
+    "webrtc",
+    "doorbell",
+    "doorpi",
+    "tessera"
+  ],
+  "author": "Babo96",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/Babo96/tessera-sip-card.git"
+  },
+  "bugs": {
+    "url": "https://github.com/Babo96/tessera-sip-card/issues"
+  },
+  "homepage": "https://github.com/Babo96/tessera-sip-card#readme",
+  "dependencies": {
+    "lit": "^3.3.3",
+    "sip.js": "^0.21.2"
+  },
+  "devDependencies": {
+    "@types/node": "^24.10.0",
+    "jsdom": "^27.0.0",
+    "prettier": "^3.6.2",
+    "typescript": "~5.9.3",
+    "vite": "^8.3.8",
+    "vitest": "^5.1.1"
+  }
+}

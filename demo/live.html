@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <meta name="color-scheme" content="light dark" />
+    <title>Tessera SIP Card — live bench</title>
+    <style>
+      :root {
+        color-scheme: light dark;
+        --bg: #eef1f6;
+        --fg: #18202c;
+        --panel: #fff;
+        --muted: #5c6879;
+      }
+      @media (prefers-color-scheme: dark) {
+        :root {
+          --bg: #10141b;
+          --fg: #f2f5f9;
+          --panel: #1a202a;
+          --muted: #9aa6b5;
+        }
+      }
+      body {
+        margin: 0;
+        padding: 28px 18px;
+        background: var(--bg);
+        color: var(--fg);
+        font: 15px/1.45 system-ui, sans-serif;
+      }
+      main {
+        max-width: 980px;
+        margin: 0 auto;
+        display: grid;
+        gap: 22px;
+        grid-template-columns: minmax(280px, 420px) minmax(280px, 1fr);
+        align-items: start;
+      }
+      h1 {
+        font-size: 20px;
+        margin: 0 0 4px;
+      }
+      p {
+        margin: 0;
+        color: var(--muted);
+      }
+      form {
+        display: grid;
+        gap: 10px;
+        background: var(--panel);
+        padding: 16px;
+        border-radius: 18px;
+        box-shadow: 0 12px 30px rgb(15 23 42 / 12%);
+      }
+      label {
+        display: grid;
+        gap: 3px;
+        font-size: 12px;
+        color: var(--muted);
+      }
+      input {
+        font: inherit;
+        padding: 8px 10px;
+        border-radius: 10px;
+        border: 1px solid color-mix(in srgb, var(--fg) 20%, transparent);
+        background: var(--bg);
+        color: var(--fg);
+      }
+      button {
+        font: inherit;
+        font-weight: 600;
+        padding: 10px 14px;
+        border-radius: 12px;
+        border: 0;
+        background: #3b82f6;
+        color: white;
+        cursor: pointer;
+      }
+      .warn {
+        font-size: 12px;
+        color: #b45309;
+      }
+      pre {
+        margin: 0;
+        padding: 12px;
+        border-radius: 12px;
+        background: var(--panel);
+        font: 12px/1.5 ui-monospace, monospace;
+        white-space: pre-wrap;
+        max-height: 260px;
+        overflow: auto;
+      }
+      #cardHost {
+        padding: 14px;
+        border-radius: 30px;
+        background: var(--panel);
+        box-shadow: 0 18px 40px rgb(15 23 42 / 14%);
+      }
+    </style>
+  </head>
+  <body>
+    <main>
+      <section>
+        <h1>Live SIP bench</h1>
+        <p>A browser card against a real PBX. Nothing is stored or sent anywhere else.</p>
+        <form id="form">
+          <label>WSS URL <input name="wss" value="ws://127.0.0.1:8088/ws" /></label>
+          <label>URI <input name="uri" value="sip:100@127.0.0.1" /></label>
+          <label>Auth user <input name="auth" value="100" /></label>
+          <label>Password <input name="password" type="password" value="test" /></label>
+          <label>Call target <input name="target" value="555" /></label>
+          <button type="submit">Connect</button>
+          <p class="warn">
+            Local testing only. For production use WSS, a secret and a dedicated extension.
+          </p>
+        </form>
+      </section>
+      <section>
+        <div id="cardHost"><tessera-sip-card id="card"></tessera-sip-card></div>
+        <pre id="log"></pre>
+      </section>
+    </main>
+    <script type="module" src="./live.ts"></script>
+  </body>
+</html>

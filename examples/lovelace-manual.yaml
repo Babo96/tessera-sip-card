@@ -1,0 +1,26 @@
+# No SIP Core, or a dedicated extension for this card.
+# Put the password and TURN secret in secrets.yaml, never here.
+type: custom:tessera-sip-card
+name: Haustür
+use_sip_core: false
+wss_url: wss://doorpi.example:57000/ws
+pbx_server: doorpi.example
+extension: "103"
+password: !secret doorpi_sip_card_password
+display_name: Flur
+call_target: "555"
+call_label: Tür abheben
+auto_answer: false
+camera: camera.doorpi
+ringtone: /local/doorbell.mp3
+ice_servers:
+  - urls: [stun:doorpi.example:3478]
+  - urls: [turns:doorpi.example:5349]
+    username: doorpi
+    credential: !secret doorpi_coturn_secret
+ice_transport_policy: all
+state_entity: input_text.tessera_sip_state
+peer_entity: input_text.tessera_sip_peer
+event_entity: input_text.tessera_sip_event
+command_entity: input_text.tessera_sip_command
+clear_command: true

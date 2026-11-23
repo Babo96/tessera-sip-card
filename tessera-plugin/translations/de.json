@@ -1,0 +1,33 @@
+{
+  "_meta": { "name": "Deutsch" },
+  "screen": {
+    "front_door": "Haustür",
+    "phase_booting": "Startet",
+    "phase_unregistered": "Offline",
+    "phase_idle": "Bereit",
+    "phase_ringing": "Klingelt",
+    "phase_dialing": "Wählt",
+    "phase_connected": "Verbunden",
+    "phase_error": "Fehler",
+    "phase_unknown": "Unbekannt",
+    "no_sensor": "Sensor wählen",
+    "caller": "Anrufer: {peer}",
+    "tap_answer": "Annehmen",
+    "tap_hangup": "Auflegen",
+    "tap_call": "Anrufen",
+    "tap_wait": "Bitte warten",
+    "tap_retry": "Erneut",
+    "ring_hint": "An der Tür",
+    "popup_answer": "Annehmen",
+    "popup_decline": "Ablehnen",
+    "setting_ring_popup": "Klingel-Popup"
+  },
+  "app": {
+    "name": "SIP-Türklingel",
+    "summary": "Zeigt den Klingelzustand der SIP-Karte und beantwortet oder beendet Anrufe vom Touchpanel aus.",
+    "tile_name": "SIP-Türklingel",
+    "tile_example": "Klingelt · Haustür",
+    "setting_ring_popup": "Klingel-Popup",
+    "setting_ring_popup_hint": "Zeigt Annehmen und Ablehnen über dem Bildschirm, während es klingelt."
+  }
+}

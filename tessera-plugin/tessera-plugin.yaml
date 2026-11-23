@@ -1,0 +1,37 @@
+# SIP doorbell: a status and remote-control tile for the Tessera SIP card's doorbell.
+# The audio itself runs in the browser that shows the SIP card; the screen only reads the card's phase from Home
+# Assistant and writes commands for the open card to run.
+id: sip_doorbell
+version: 0.1.0
+# Lowest API with everything here: popups and ui::animate need 0.18 (ui::set_fill 0.9, action fields 0.12).
+# No TileContext::full and no `full: true`, which would need 0.25: the tile offers 1x1 to 2x2.
+api: "0.18"
+icon: doorbell
+maintainer: Babo96
+license: MIT
+stage: beta
+topics: [home, tech]
+requires:
+  esphome: 2026.6.2
+boards: any
+flash_kb: 6
+
+permissions:
+  home_assistant_actions:
+    - script.turn_on
+    - input_text.set_value
+
+tiles:
+  - id: door
+    name: tile_name
+    icon: doorbell
+    sizes: { min: 1x1, max: 2x2 }
+    memory: 1000
+    # Pick sensor.tessera_sip in the inspector. Its state is the phase; its `peer` attribute is the caller.
+    domains: [sensor]
+    attributes: [peer]
+    example: tile_example
+    preview: { title: "{name}", value: "{state}" }
+
+settings:
+  - { key: ring_popup, label: setting_ring_popup, hint: setting_ring_popup_hint }

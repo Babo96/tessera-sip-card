@@ -1,0 +1,142 @@
+# Tessera SIP bridge: helpers, a template sensor and scripts.
+#
+# Put this in configuration.yaml (or a package) and reload YAML. The browser
+# card owns the call; these helpers let Home Assistant automations and a
+# Tessera panel see and steer it.
+#
+# The card must write these helpers itself:
+#   state_entity:   input_text.tessera_sip_state
+#   peer_entity:    input_text.tessera_sip_peer
+#   event_entity:   input_text.tessera_sip_event
+#   command_entity: input_text.tessera_sip_command
+#   clear_command:  true
+#
+# Requires Home Assistant 2024.10+ (triggers/actions syntax).
+
+input_text:
+  tessera_sip_state:
+    name: Tessera SIP state
+    max: 32
+    icon: mdi:phone
+  tessera_sip_peer:
+    name: Tessera SIP caller
+    max: 64
+    icon: mdi:account
+  tessera_sip_event:
+    name: Tessera SIP event
+    max: 255
+    icon: mdi:bell-ring
+  tessera_sip_command:
+    name: Tessera SIP command
+    max: 64
+    icon: mdi:console
+
+template:
+  - sensor:
+      - name: Tessera SIP
+        unique_id: tessera_sip_bridge
+        icon: >-
+          {% set s = states('input_text.tessera_sip_state') %}
+          {% if s == 'ringing' %}mdi:phone-ring
+          {% elif s == 'connected' %}mdi:phone-in-talk
+          {% elif s in ['unregistered', 'error'] %}mdi:phone-off
+          {% else %}mdi:phone{% endif %}
+        state: >-
+          {{ states('input_text.tessera_sip_state') | default('unregistered', true) }}
+        attributes:
+          peer: "{{ states('input_text.tessera_sip_peer') }}"
+          card: "tessera-sip"
+
+script:
+  tessera_sip_answer:
+    alias: "Tessera SIP: answer"
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "answer|{{ now().timestamp() }}"
+
+  tessera_sip_decline:
+    alias: "Tessera SIP: decline"
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "decline|{{ now().timestamp() }}"
+
+  tessera_sip_hangup:
+    alias: "Tessera SIP: hang up"
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "hangup|{{ now().timestamp() }}"
+
+  tessera_sip_call_door:
+    alias: "Tessera SIP: call the door"
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "call:8000|{{ now().timestamp() }}"
+
+  tessera_sip_pickup:
+    alias: "Tessera SIP: pick up the parked call"
+    mode: single
+    sequence:
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "call:555|{{ now().timestamp() }}"
+
+  # One key for the Tessera tile: answer while ringing, hang up in a call,
+  # otherwise pick up the door.
+  tessera_sip_toggle:
+    alias: "Tessera SIP: toggle"
+    mode: single
+    sequence:
+      - variables:
+          phase: "{{ states('sensor.tessera_sip') }}"
+          command: >-
+            {% if phase == 'ringing' %}answer
+            {% elif phase in ['connected', 'dialing'] %}hangup
+            {% else %}call:555{% endif %}
+      - action: input_text.set_value
+        target:
+          entity_id: input_text.tessera_sip_command
+        data:
+          value: "{{ command }}|{{ now().timestamp() }}"
+
+automation:
+  # A phone notification for a ring the browser may not be showing yet.
+  # On a non-admin kiosk, `tessera_sip_card` events cannot be fired by the
+  # browser. Trigger on the event helper instead:
+  #   triggers:
+  #     - trigger: state
+  #       entity_id: input_text.tessera_sip_event
+  #       not_to: [unknown, unavailable, ""]
+  #   conditions:
+  #     - condition: template
+  #       value_template: "{{ trigger.to_state.state.split('|')[0] == 'ringing' }}"
+  - alias: "Tessera SIP: doorbell ringing"
+    id: tessera_sip_doorbell_ringing
+    triggers:
+      - trigger: event
+        event_type: tessera_sip_card
+        event_data:
+          event: ringing
+    actions:
+      - action: notify.notify
+        data:
+          title: Haustür
+          message: >-
+            {{ trigger.event.data.peer | default('Jemand', true) }} klingelt an der Tür.

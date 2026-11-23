@@ -1,0 +1,14 @@
+# A local Asterisk for testing the card without DoorPi.
+# WebSocket (not TLS) on ws://127.0.0.1:8088/ws; extension 100 / test; 555 is Echo().
+#
+#   docker compose up -d
+#   npm run dev
+#   open http://127.0.0.1:5173/demo/live.html
+#   docker compose down
+services:
+  asterisk:
+    image: andrius/asterisk:20
+    network_mode: host
+    volumes:
+      - ./etc:/etc/asterisk:ro
+    restart: "no"

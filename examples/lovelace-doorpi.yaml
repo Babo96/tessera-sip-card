@@ -1,0 +1,26 @@
+# DoorPi / SIP Core: WSS + ICE from SIP Core, a dedicated extension for the card.
+#
+# Why the extension: SIP Core's frontend module registers its own account on
+# every dashboard load, and DoorPi's AOR has remove_existing=yes. Two user
+# agents on one extension kick each other out. Create a second PJSIP endpoint
+# (docs/DOORPI.md) and put its secret in secrets.yaml.
+type: custom:tessera-sip-card
+name: Haustür
+use_sip_core: true
+extension: "103"
+password: !secret doorpi_sip_card_password
+call_target: "555"            # pick up the parked doorbell call
+call_label: Tür abheben
+camera: camera.doorpi
+state_entity: input_text.tessera_sip_state
+peer_entity: input_text.tessera_sip_peer
+event_entity: input_text.tessera_sip_event
+command_entity: input_text.tessera_sip_command
+clear_command: true
+dtmf_actions:
+  - label: Tür öffnen
+    digit: "1"
+    icon: door
+  - label: Licht
+    digit: "2"
+    icon: volume

@@ -1,0 +1,49 @@
+# Data for tools/preview.py: the states a doorbell goes through, at the sizes the panel uses.
+# The real tile reads sensor.tessera_sip; these stand-ins let the bench render each state.
+tiles:
+  - tile: door
+    name: Idle
+    entity: sensor.tessera_sip_idle
+    sizes: [1x1, 2x2]
+  - tile: door
+    name: Ringing
+    entity: sensor.tessera_sip_ringing
+    sizes: [2x2]
+    # After the tile's own tap, tap the Answer key in the ring popup (a part of the glass).
+    then: [[0.70, 0.55]]
+  - tile: door
+    name: Connected
+    entity: sensor.tessera_sip_connected
+    sizes: [2x2]
+  - tile: door
+    name: Offline
+    entity: sensor.tessera_sip_offline
+    sizes: [1x2]
+  - tile: door
+    name: Error
+    entity: sensor.tessera_sip_error
+    sizes: [1x2]
+  - tile: door
+    name: Choose sensor
+    entity: sensor.tessera_sip_unknown
+    sizes: [1x1]
+
+states:
+  sensor.tessera_sip_idle:
+    state: idle
+    attributes: { peer: "" }
+  sensor.tessera_sip_ringing:
+    state: ringing
+    attributes: { peer: Anna }
+  sensor.tessera_sip_connected:
+    state: connected
+    attributes: { peer: Anna }
+  sensor.tessera_sip_offline:
+    state: unregistered
+    attributes: { peer: "" }
+  sensor.tessera_sip_error:
+    state: error
+    attributes: { peer: "" }
+  sensor.tessera_sip_unknown:
+    state: unknown
+    attributes: { peer: "" }

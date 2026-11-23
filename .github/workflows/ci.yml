@@ -1,0 +1,54 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+jobs:
+  check:
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        node: [22, 24]
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: ${{ matrix.node }}
+          cache: npm
+      - run: npm ci
+      - run: npm run typecheck
+      - run: npm test
+      - run: npm run build
+      - name: The committed bundle is not stale
+        if: matrix.node == 24
+        run: |
+          if ! git diff --quiet -- dist; then
+            echo "::error::dist/ is stale. Run 'npm run build' and commit it."
+            git diff --stat -- dist
+            exit 1
+          fi
+
+  plugin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.12"
+      - run: python -m pip install --quiet pyyaml
+      - name: Fetch Tessera's plugin checker
+        run: |
+          git clone --depth 1 https://github.com/MaxGramser/tessera-plugins /tmp/tessera-plugins
+          git clone --depth 1 --filter=blob:none --sparse https://github.com/MaxGramser/homeassistant_espscreen /tmp/tessera
+          git -C /tmp/tessera sparse-checkout set screen_manager/app
+      - name: Check the companion plugin
+        if: hashFiles('tessera-plugin/tessera-plugin.yaml') != ''
+        env:
+          TESSERA_MANIFEST: /tmp/tessera/screen_manager/app/plugin_manifest.py
+        run: python3 /tmp/tessera-plugins/tools/check.py tessera-plugin

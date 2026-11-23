@@ -1,0 +1,13 @@
+# What a screen gets when it takes this plugin. The switch is also the plugin's one setting: it decides whether the
+# Answer / Decline popup appears while the doorbell rings.
+switch:
+  - platform: template
+    id: sip_doorbell_ring_popup
+    name: "Ring popup"
+    icon: mdi:doorbell
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_ON
+    entity_category: config
+
+sip_doorbell:
+  ring_popup: sip_doorbell_ring_popup
