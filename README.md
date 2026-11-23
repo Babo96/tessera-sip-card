@@ -254,7 +254,7 @@ best doorbell annunciator in the house:
 4. Install the `tessera-plugin/` tile on the panel. It reads
    `sensor.tessera_sip` and taps through to `script.tessera_sip_toggle`.
 
-![The companion tile on a 2×2 Guition: connected, caller, timer and Hang up](tessera-plugin/docs/preview/tile-connected.png)
+![The companion tile on the gang board size (480×800): connected, caller, timer and Hang up](tessera-plugin/docs/preview/jc4880p443-connected.png)
 
 Details, the event flow and the Path B bridge design are in
 [docs/TESSERA.md](docs/TESSERA.md).

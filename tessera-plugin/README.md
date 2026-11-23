@@ -16,6 +16,12 @@ Rendered by Tessera's own preview harness on a Guition 480×480 profile; the
 
 ![The ring popup over the page: Ringing, caller, Answer and Decline](docs/preview/popup-ringing.png)
 
+On the gang board's 480×800 profile:
+
+| Connected | Ringing popup |
+|---|---|
+| ![Connected on 480x800](docs/preview/jc4880p443-connected.png) | ![Ring popup on 480x800](docs/preview/jc4880p443-ringing.png) |
+
 ## Set up
 
 You need the Home Assistant helpers, template sensor and scripts that come with the SIP card examples:
