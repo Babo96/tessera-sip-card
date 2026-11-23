@@ -7,20 +7,19 @@ already listens to.
 
 ## Previews
 
-Rendered by Tessera's own preview harness on a Guition 480×480 profile; the
-1x1 crop shows the short layout.
+Rendered by Tessera's own preview harness, with the real tile layout. The
+smallest screen is the CYD (320×240); the owner's panel is 480×800.
 
-| 1×1 | 2×2 idle | 2×2 connected |
-|---|---|---|
-| ![1x1: Ready](docs/preview/tile-1x1.png) | ![2x2 idle: Ready, Call](docs/preview/tile-idle.png) | ![2x2 connected: caller and timer](docs/preview/tile-connected.png) |
-
-![The ring popup over the page: Ringing, caller, Answer and Decline](docs/preview/popup-ringing.png)
-
-On the gang board's 480×800 profile:
-
-| Connected | Ringing popup |
+| CYD 320×240 — ringing | CYD 320×240 — connected |
 |---|---|
-| ![Connected on 480x800](docs/preview/jc4880p443-connected.png) | ![Ring popup on 480x800](docs/preview/jc4880p443-ringing.png) |
+| ![Ring popup on the CYD](docs/preview/cyd-ringing.png) | ![Connected tile on the CYD, popup gone](docs/preview/cyd-connected.png) |
+
+| 480×800 — ringing | 480×800 — connected |
+|---|---|
+| ![Ring popup on the 480x800 panel](docs/preview/jc4880p443-ringing.png) | ![Connected tile on the 480x800 panel](docs/preview/jc4880p443-connected.png) |
+
+The ring popup is the only thing that moves; the tile itself stands still.
+The tile audits report `outside=0 clipped=0 overlap=0` at every size.
 
 ## Set up
 
