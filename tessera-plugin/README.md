@@ -1,76 +1,101 @@
 # SIP doorbell
 
-A Tessera tile for a touch panel that shows what the SIP doorbell is doing and lets you answer or hang up. It is a
-status and remote-control surface, not an audio endpoint: the SIP/WebRTC audio runs in the browser that shows the
-Tessera SIP card. The tile only reads the card's phase from Home Assistant and writes the command the open card
-already listens to.
+A native SIP phone for the Tessera panel. The ESP32-P4 registers itself to a PBX, carries the call audio through its
+own microphone and speaker, and draws a door tile plus a full-screen call card. Nothing on the panel needs Home
+Assistant, a browser, a WebRTC tab or a companion service for the call.
 
-## Previews
+The separate [tessera-sip-card](https://github.com/MaxGramser/tessera-sip-card) browser card remains a separate
+Home Assistant dashboard fallback. This plugin does not use it and does not change it.
 
-Rendered by Tessera's own preview harness, with the real tile layout. The
-smallest screen is the CYD (320×240); the owner's panel is 480×800.
+## What it is
 
-| CYD 320×240 — ringing | CYD 320×240 — connected |
-|---|---|
-| ![Ring popup on the CYD](docs/preview/cyd-ringing.png) | ![Connected tile on the CYD, popup gone](docs/preview/cyd-connected.png) |
-
-| 480×800 — ringing | 480×800 — connected |
-|---|---|
-| ![Ring popup on the 480x800 panel](docs/preview/jc4880p443-ringing.png) | ![Connected tile on the 480x800 panel](docs/preview/jc4880p443-connected.png) |
-
-The ring popup is the only thing that moves; the tile itself stands still.
-The tile audits report `outside=0 clipped=0 overlap=0` at every size.
+- **Native endpoint**: the vendored `sip_client` component (MIT, eigger, under `components/sip_client/`) does SIP
+  registration, INVITE/BYE/CANCEL, Digest auth, RTP and DTMF. It is not a no-registration stack.
+- **Audio on the panel**: `ts_microphone` (16 kHz, 16-bit mono, post-AEC from the es8311 path) feeds `sip_client`;
+  `ts_speaker` plays the call. Codecs are G.711 PCMU/PCMA at 8 kHz, as configured in `plugin.yaml`.
+- **No ringtone in this version.** Incoming ringing is shown on the tile, in the popup and on the card; the speaker
+  plays only call audio.
+- **No SRTP/DTLS for RTP** and no ICE. Signaling can be UDP, WS or WSS; audio is plain RTP UDP.
 
 ## Set up
 
-You need the Home Assistant helpers, template sensor and scripts that come with the SIP card examples:
+1. Add this plugin to a panel that has a microphone and speaker. The manifest requires both features and PSRAM.
+2. Fill in the SIP inputs for the extension: server, port, user, password, domain, caller name and transport.
+   The values are substitutions; the defaults in `plugin.yaml` are placeholders and should be replaced.
+3. Put the tile on a page. Set **Door number** (default 555) and **Station number** (default 8000) in its inspector.
+4. Optionally turn **Ring popup** or **Auto answer** on under the plugin's settings.
 
-- `input_text.tessera_sip_state` — the phase the card writes: `booting`, `unregistered`, `idle`, `ringing`,
-  `dialing`, `connected` or `error`.
-- `input_text.tessera_sip_peer` — the caller, possibly empty.
-- `input_text.tessera_sip_command` — what the card listens to: `answer`, `decline`, `hangup`, `call:555`,
-  `dtmf:1`, `mute`, `unmute`, `retry`.
-- `sensor.tessera_sip` — the template sensor the tile reads. Its state is the phase and its `peer` attribute is the
-  caller.
-- `script.tessera_sip_toggle` — the script a tap runs. It decides from the sensor state whether to answer, hang up or
-  call.
+### Password caveat
 
-Until it is in the Tessera plugin index, copy this `tessera-plugin/` folder to
-`<ESPHome config>/tessera-plugins/sip_doorbell/` (a test folder beside your
-ESPHome configuration) and add it from Tessera's **Plugins** page. The app's
-link install reads a manifest at the repository root; this repository keeps
-the plugin in a subfolder next to the card.
+Tessera does not allow `!secret` in a plugin's `plugin.yaml`, so the SIP password is a normal text input. It is kept
+in the plugin record and reaches the screen's generated configuration. Use a dedicated LAN extension with a password
+that is not shared with anything else, and do not use a provider or trunk account here.
 
-Then:
+### DoorPi / Asterisk example
 
-1. Add this plugin to a screen in Tessera. The screen builds once.
-2. Place the **SIP doorbell** tile from the library's Plugins group.
-3. In the inspector, choose `sensor.tessera_sip` as the tile's entity. If you leave it empty the tile says
-   **Choose sensor**.
-4. Optionally set the tile's name; **Front door** is used while it has none.
+The example that was tested against the native client uses a LAN PBX endpoint:
 
-## On the screen
+- PBX SIP transport on UDP **5062** (or 5060 on a standard Asterisk/FreePBX).
+- Plain RTP, no SRTP/ICE/WebRTC defaults; codecs **PCMU** and **PCMA** (G.711).
+- The extension registers as the configured user and calls the door endpoint at the **Door number**.
+- `Open door` sends DTMF **1** to the PBX after the call is connected.
+- The panel's local RTP port is **7078**; the PBX/router firewall must allow the return RTP to that port.
 
-The tile shows a doorbell icon, the phase in words and a quiet status dot; on
-tiles with room it also shows the tile name. The short CYD strip keeps only
-the icon, phase and action word. While connected it counts
-the time since this tile saw the call connect, on the screen's own clock. When a caller is known it shows the peer
-under the phase. On taller tiles a key at the bottom says what a tap does: **Answer**, **Hang up**, **Call**,
-**Retry** or **Please wait**. With a sensor chosen, a tap always runs `script.tessera_sip_toggle`.
+For a remote PBX over `wss`, enable the WebSocket transport on the PBX, set `transport: wss`, and keep in mind that
+only signaling is protected; RTP remains plain UDP and needs reachable ports or a VPN.
 
-While the phase is `ringing` the icon, phase and dot use the amber warning tone. There is no animation on the tile:
-motion is kept for popups, so a tile stands still and costs no extra frames.
+## The tile
 
-If **Ring popup** is on (the default), a ringing doorbell also shows a popup with **Answer** and **Decline**. They write
-`answer` or `decline` to `input_text.tessera_sip_command`. The popup pulses its icon and closes when the ring ends.
-The switch is a normal entity of the screen in Home Assistant and appears in the plugin's details and on the screen's
-own settings page.
+- Sizes 1x1 to 2x2.
+- Shows the native phase (Offline, Registering, Ready, Ringing, Calling, Connected, Error), the peer, a registered
+  dot and the connected timer.
+- A tap opens the **SIP call** card. The tile itself no longer dials or answers.
 
-## Notes
+## The call card
 
-- The tile has no network access, no pictures and no audio. It reads one Home Assistant entity through the plugin API
-  and calls one script and one `input_text` action.
-- The connected timer starts when this tile first sees `connected`; it is not the call's start time from the PBX.
-- The plugin API is 0.18, the lowest that has everything used here: popups and `ui::animate` (0.18), action fields
-  (0.12), `ui::set_fill` (0.9) and `set_tone` (0.8). The tile offers 1x1 to 2x2; `full: true` and `TileContext::full`
-  need API 0.25 and are left out on purpose.
+The card is wide and shows the same status, peer and timer, with keys that follow the phase:
+
+| Phase | Keys |
+|---|---|
+| Ready | Call door *target*, Call station *station* |
+| Ringing | Answer, Decline |
+| Calling | Cancel |
+| Connected | Hang up, Mute/Unmute, Open door (DTMF 1), 3x4 DTMF keypad |
+| Offline / Error | Retry (fresh REGISTER), Call *target* |
+| Registering | status only |
+
+- **Mute** zeroes the PCM in `sip_client`'s microphone callback and keeps sending RTP, so the PBX still receives
+  packets while the microphone is silent.
+- **Open door** sends `dtmf:1` through `sip_client.send_dtmf()`.
+- **Retry** asks the client for a fresh REGISTER after a lost link.
+- The DTMF keypad is created only when the card has room for touch-sized keys. The CYD 320x240 keeps the primary
+  keys and drops the keypad; the 480x800 panel gets the full card.
+- The back key is Tessera's; the card does not replace it.
+
+## Build and verification
+
+The native component was compiled in the real `jc4880p443` package with ESPHome 2026.10.2:
+
+```sh
+cd /tmp/opencode/native-prototype-build
+uvx --from esphome==2026.10.2 esphome compile native-test-plugin.yaml
+```
+
+Result: success, 47.4 % flash and 27.6 % RAM used on the P4 build (`native-test.bin` 0x3ad5c0 bytes, 53 % of the app
+partition free). The exact test file points `packages: plugin` at this plugin's `plugin.yaml`.
+
+`tools/check.py` passes with the local Tessera manifest and boards. The host render harness refuses a plugin that
+requires microphone and speaker, because the firmware built for a computer has neither, so there are no `.preview`
+images for this version. The UI must be checked on the real panel.
+
+## Limits and remaining risks
+
+- **NAT**: only the panel's local RTP port is advertised. A remote PBX behind NAT needs the RTP port reachable or a
+  VPN; there is no ICE/TURN.
+- **TLS/SRTP**: `wss` protects SIP signaling only. There is no SRTP, so a remote deployment still has plain RTP audio.
+- **Echo**: the mic is the post-AEC es8311 path, but speaker placement and gain still matter on a real panel.
+- **Registration errors**: the client has no separate "registration failed" state; after a link that was once up, the
+  tile shows Error, and Retry asks for a fresh REGISTER. Before the first registration it shows Offline/Registering.
+- **No ringtone**: the speaker is not used for ringing in 0.2.0.
+- **Password storage**: the password is a plugin text input, not an encrypted secret.
+- **Browser card**: the `tessera-sip-card` project is unchanged and is not used by this plugin.

@@ -1,5 +1,14 @@
-# What a screen gets when it takes this plugin. The switch is also the plugin's one setting: it decides whether the
-# Answer / Decline popup appears while the doorbell rings.
+# What a screen gets when it takes this plugin: the native SIP client, its two settings, and the plugin's UI.
+# The values below are the defaults for the manifest's inputs; the app fills in the person's values as substitutions.
+defaults:
+  SIP_SERVER: "192.168.1.10"
+  SIP_PORT: "5062"
+  SIP_USER: "1003"
+  SIP_PASSWORD: "change-me"
+  SIP_DOMAIN: "192.168.1.10"
+  SIP_CALLER: "Gang"
+  SIP_TRANSPORT: "udp"
+
 switch:
   - platform: template
     id: sip_doorbell_ring_popup
@@ -8,6 +17,44 @@ switch:
     optimistic: true
     restore_mode: RESTORE_DEFAULT_ON
     entity_category: config
+  - platform: template
+    id: sip_doorbell_auto_answer
+    name: "Auto answer"
+    icon: mdi:phone-in-talk
+    optimistic: true
+    restore_mode: RESTORE_DEFAULT_OFF
+    entity_category: config
 
 sip_doorbell:
+  id: sip_doorbell_plugin
+  sip_id: sip
   ring_popup: sip_doorbell_ring_popup
+  auto_answer: sip_doorbell_auto_answer
+
+sip_client:
+  id: sip
+  microphone:
+    microphone: ts_microphone
+    channels: 0
+  speaker: ts_speaker
+  channel: mono
+  server: ${SIP_SERVER}
+  port: ${SIP_PORT}
+  transport: ${SIP_TRANSPORT}
+  username: ${SIP_USER}
+  password: ${SIP_PASSWORD}
+  domain: ${SIP_DOMAIN}
+  caller_id: ${SIP_CALLER}
+  codecs: [pcmu, pcma]
+  local_rtp_port: 7078
+  rtp_keepalive: 10s
+  on_registered:
+    - lambda: id(sip_doorbell_plugin)->on_sip_registered();
+  on_incoming_call:
+    - lambda: id(sip_doorbell_plugin)->on_sip_incoming(caller);
+  on_call_connected:
+    - lambda: id(sip_doorbell_plugin)->on_sip_connected();
+  on_call_ended:
+    - lambda: id(sip_doorbell_plugin)->on_sip_ended();
+  on_dtmf:
+    - lambda: id(sip_doorbell_plugin)->on_sip_dtmf(digit);

@@ -1,10 +1,8 @@
-# SIP doorbell: a status and remote-control tile for the Tessera SIP card's doorbell.
-# The audio itself runs in the browser that shows the SIP card; the screen only reads the card's phase from Home
-# Assistant and writes commands for the open card to run.
+# SIP doorbell: a native SIP phone on the panel. The ESP32-P4 registers to the PBX, carries the audio itself and
+# draws a door tile plus a full-screen call card. The browser tessera-sip-card stays a separate dashboard fallback.
 id: sip_doorbell
-version: 0.1.0
-# Lowest API with everything here: popups and ui::animate need 0.18 (ui::set_fill 0.9, action fields 0.12).
-# No TileContext::full and no `full: true`, which would need 0.25: the tile offers 1x1 to 2x2.
+version: 0.2.0
+# Cards and popups (0.18) are the newest parts used; every other call is older.
 api: "0.18"
 icon: doorbell
 maintainer: Babo96
@@ -13,13 +11,22 @@ stage: beta
 topics: [home, tech]
 requires:
   esphome: 2026.6.2
+  psram: true
+  features: [microphone, speaker]
 boards: any
-flash_kb: 6
+flash_kb: 500
 
-permissions:
-  home_assistant_actions:
-    - script.turn_on
-    - input_text.set_value
+inputs:
+  - { id: sip_server, kind: text, label: input_sip_server, hint: input_sip_server_hint }
+  - { id: sip_port, kind: text, label: input_sip_port, hint: input_sip_port_hint }
+  - { id: sip_user, kind: text, label: input_sip_user, hint: input_sip_user_hint }
+  - { id: sip_password, kind: text, label: input_sip_password, hint: input_sip_password_hint }
+  - { id: sip_domain, kind: text, label: input_sip_domain, hint: input_sip_domain_hint }
+  - { id: sip_caller, kind: text, label: input_sip_caller, hint: input_sip_caller_hint }
+  - { id: sip_transport, kind: text, label: input_sip_transport, hint: input_sip_transport_hint }
+
+cards:
+  - { id: call, name: card_name, wide: true }
 
 tiles:
   - id: door
@@ -27,11 +34,11 @@ tiles:
     icon: doorbell
     sizes: { min: 1x1, max: 2x2 }
     memory: 1000
-    # Pick sensor.tessera_sip in the inspector. Its state is the phase; its `peer` attribute is the caller.
-    domains: [sensor]
-    attributes: [peer]
     example: tile_example
-    preview: { title: "{name}", value: "{state}" }
+    options:
+      - { id: target, kind: text, default: "555", label: option_target, hint: option_target_hint }
+      - { id: station, kind: text, default: "8000", label: option_station, hint: option_station_hint }
 
 settings:
+  - { key: auto_answer, label: setting_auto_answer, hint: setting_auto_answer_hint }
   - { key: ring_popup, label: setting_ring_popup, hint: setting_ring_popup_hint }
