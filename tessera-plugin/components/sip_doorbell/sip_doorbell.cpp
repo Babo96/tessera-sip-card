@@ -220,8 +220,28 @@ class DoorTile : public tessera::Tile {
   void on_theme() override { layout(); }
 
   void on_tap() override {
+    const tessera::Point point = tessera::tap_point();
+    if (point.x < 0 || point.y < 0) return;
     plugin_->set_targets(target_, station_);
-    tessera::open_card(plugin_->plugin_id(), "call", "", tile_, display_title());
+
+    // The bottom key opens the full card; the rest of the tile calls, answers,
+    // cancels or hangs up at once, so a call needs one tap and no card.
+    const bool card_key = point.x >= open_x_ && point.x < open_x_ + open_w_ &&
+                          point.y >= open_y_ && point.y < open_y_ + open_h_;
+    if (card_key) {
+      tessera::open_card(plugin_->plugin_id(), "call", "", tile_, display_title());
+      return;
+    }
+
+    const char *phase = plugin_->phase();
+    if (phase_is(phase, "ringing")) {
+      plugin_->answer();
+    } else if (phase_is(phase, "dialing") || phase_is(phase, "connected")) {
+      plugin_->hangup();
+    } else if (phase_is(phase, "idle") || phase_is(phase, "offline") || phase_is(phase, "error")) {
+      plugin_->call(target_);
+    }
+    tessera::refresh();
   }
 
  private:
@@ -238,7 +258,8 @@ class DoorTile : public tessera::Tile {
     ui::set_text(title_, display_title());
     ui::set_text(phase_, phase_text(plugin_, phase));
     ui::set_text(timer_, timer);
-    ui::set_text(peer_, peer_line(plugin_));
+    const bool idle_hint = phase_is(phase, "idle") || phase_is(phase, "offline") || phase_is(phase, "error");
+    ui::set_text(peer_, idle_hint ? plugin_->text("tile_call_hint") : peer_line(plugin_));
     ui::set_text(pill_text_, plugin_->text("tile_open"));
     ui::set_text(action_, plugin_->text("tile_open"));
 
@@ -296,7 +317,8 @@ class DoorTile : public tessera::Tile {
     const bool has_peer = plugin_->peer()[0] != '\0' &&
                           (phase_is(phase, "ringing") || phase_is(phase, "dialing") ||
                            phase_is(phase, "connected"));
-    bool show_peer = has_peer;
+    const bool has_hint = idle_hint;
+    bool show_peer = has_peer || has_hint;
     int group_h = row_h + (show_peer ? gap / 2 + peer_h : 0);
     if (group_h > content_bottom - content_top) {
       show_peer = false;
@@ -321,6 +343,10 @@ class DoorTile : public tessera::Tile {
 
     lv_obj_set_pos(pill_, pad, pill_y);
     lv_obj_set_size(pill_, width_ - 2 * pad, pill_h);
+    open_x_ = pad;
+    open_y_ = pill_y;
+    open_w_ = width_ - 2 * pad;
+    open_h_ = pill_h;
     const int pill_line = ui::line_height(pill_font_);
     lv_obj_set_pos(pill_text_, 0, (pill_h - pill_line) / 2);
     lv_obj_set_size(pill_text_, width_ - 2 * pad, pill_line);
@@ -357,6 +383,10 @@ class DoorTile : public tessera::Tile {
     show_part(action_, true);
     lv_obj_set_pos(action_, content_x, action_y);
     lv_obj_set_size(action_, imax(1, width_ - content_x - pad), action_line);
+    open_x_ = content_x;
+    open_y_ = action_y;
+    open_w_ = imax(1, width_ - content_x - pad);
+    open_h_ = action_line;
   }
 
   SipDoorbell *plugin_;
@@ -368,6 +398,10 @@ class DoorTile : public tessera::Tile {
   Font timer_font_{Font::TITLE};
   Font pill_font_{Font::BODY_LARGE};
   int icon_w_{0};
+  int open_x_{0};
+  int open_y_{0};
+  int open_w_{0};
+  int open_h_{0};
   char name_[48] = "";
   char target_[16] = "555";
   char station_[16] = "8000";

@@ -1,7 +1,7 @@
 # SIP doorbell: a native SIP phone on the panel. The ESP32-P4 registers to the PBX, carries the audio itself and
 # draws a door tile plus a full-screen call card. The browser tessera-sip-card stays a separate dashboard fallback.
 id: sip_doorbell
-version: 0.2.0
+version: 0.2.1
 # Cards and popups (0.18) are the newest parts used; every other call is older.
 api: "0.18"
 icon: doorbell

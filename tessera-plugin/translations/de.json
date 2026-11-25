@@ -1,5 +1,7 @@
 {
-  "_meta": { "name": "Deutsch" },
+  "_meta": {
+    "name": "Deutsch"
+  },
   "screen": {
     "front_door": "Haustür",
     "phase_offline": "Offline",
@@ -27,7 +29,8 @@
     "call_station": "Station {number} anrufen",
     "call_number": "{number} anrufen",
     "setting_auto_answer": "Auto-Annahme",
-    "setting_ring_popup": "Klingel-Popup"
+    "setting_ring_popup": "Klingel-Popup",
+    "tile_call_hint": "Tippen zum Anrufen · Öffnen für Tasten"
   },
   "app": {
     "name": "SIP-Türklingel",

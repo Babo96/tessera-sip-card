@@ -1,5 +1,7 @@
 {
-  "_meta": { "name": "English" },
+  "_meta": {
+    "name": "English"
+  },
   "screen": {
     "front_door": "Front door",
     "phase_offline": "Offline",
@@ -27,7 +29,8 @@
     "call_station": "Call station {number}",
     "call_number": "Call {number}",
     "setting_auto_answer": "Auto answer",
-    "setting_ring_popup": "Ring popup"
+    "setting_ring_popup": "Ring popup",
+    "tile_call_hint": "Tap to call · Open for keys"
   },
   "app": {
     "name": "SIP doorbell",

@@ -58,3 +58,37 @@ sip_client:
     - lambda: id(sip_doorbell_plugin)->on_sip_ended();
   on_dtmf:
     - lambda: id(sip_doorbell_plugin)->on_sip_dtmf(digit);
+
+# Useful actions in Home Assistant and on the screen's settings page, and the test
+# hook for the native call path. The card uses the same calls.
+button:
+  - platform: template
+    name: "SIP call door 555"
+    icon: mdi:phone
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->call("555");'
+  - platform: template
+    name: "SIP call station 8000"
+    icon: mdi:phone-log
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->call("8000");'
+  - platform: template
+    name: "SIP answer"
+    icon: mdi:phone-incoming
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->answer();'
+  - platform: template
+    name: "SIP hang up"
+    icon: mdi:phone-hangup
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->hangup();'
+  - platform: template
+    name: "SIP mute"
+    icon: mdi:microphone-off
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->toggle_mute();'
+  - platform: template
+    name: "SIP open door"
+    icon: mdi:door
+    on_press:
+      - lambda: 'id(sip_doorbell_plugin)->send_dtmf("1");'

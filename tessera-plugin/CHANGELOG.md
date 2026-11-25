@@ -1,5 +1,10 @@
 # Changelog
 
+## 0.2.1
+- The tile now calls, answers, cancels or hangs up on a tap; its bottom key opens the full card.
+- Home Assistant buttons for door/station call, answer, hang up, mute and open-door DTMF.
+- A "Tap to call · Open for keys" hint on idle tiles.
+
 ## 0.2.0
 - Native SIP phone on the panel: the plugin registers to the PBX with the vendored `sip_client`, uses the board's
   microphone and speaker, and no longer reads a Home Assistant helper or a browser command entity.
