@@ -1,370 +1,233 @@
-# Tessera SIP Card
+# Tessera SIP
 
-[![CI](https://github.com/Babo96/tessera-sip-card/actions/workflows/ci.yml/badge.svg)](https://github.com/Babo96/tessera-sip-card/actions/workflows/ci.yml)
-[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+A **native SIP phone for Tessera panels** — the screen registers to a SIP PBX
+itself, carries the audio on its own microphone and speaker, and draws a door
+tile plus a full-screen call card. No browser, no Home Assistant helper, no
+bridge process.
 
-A SIP doorbell card for Home Assistant, with the calm, rounded look of a
-[Tessera](https://github.com/MaxGramser/homeassistant_espscreen) tile.
+The repository also keeps the earlier **SIP.js card for Home Assistant
+dashboards** as a fallback for phones and tablets. It is documented separately
+in [docs/BROWSER_CARD.md](docs/BROWSER_CARD.md).
 
-It puts a real WebRTC SIP client ([SIP.js](https://sip.js.net/)) in your
-dashboard: answer the door, talk, mute, send DTMF ("open door"), and hang up
-without leaving Home Assistant. It is built for the
-DoorPi flow — Asterisk on a Raspberry Pi, a door station on
-`8000`, and a parked call picked up on `555` — but any SIP-over-WSS PBX works.
+- **Native Tessera plugin:** [`tessera-plugin/`](tessera-plugin/) — ESP32-P4,
+  SIP registration, RTP, G.711/G.722, mic/speaker, tile + card, DTMF, mute,
+  auto-answer, ring popup. Configurable server/account and tile targets.
+- **Browser card:** [`tessera-sip-card`](docs/BROWSER_CARD.md) — SIP.js,
+  Home Assistant dashboard, for a hallway tablet or phone.
 
-> **Status: 0.1.0 — card and companion plugin built; DoorPi call pending.**
-> The SIP client has been driven through a real Asterisk (registration,
-> outgoing, incoming, mute, hang up) with the local fixture in
-> [`tools/asterisk/`](tools/asterisk/). The first call against the actual
-> DoorPi PBX still has to be made; see [What is verified](#what-is-verified).
-
-## Screenshots
-
-| Idle | Ringing | Connected |
-|---|---|---|
-| ![Idle, light: Front door, pick up the doorbell](docs/screenshots/idle.png) | ![Ringing, light: answer or decline](docs/screenshots/ringing.png) | ![Connected: timer, mute, door and light keys](docs/screenshots/connected.png) |
-
-| Error, light | Ringing on a tall dark panel |
-|---|---|
-| ![PBX connection error with retry](docs/screenshots/error.png) | ![The card near the top of a tall dark wall panel](docs/screenshots/panel.png) |
-
-All states are driven by the demo's fake SIP client; the design does not depend
-on a PBX. Every screenshot's query is listed in
-[docs/screenshots/README.md](docs/screenshots/README.md). The same card against
-a real Asterisk is in [docs/LIVE_TEST.md](docs/LIVE_TEST.md).
+> **Status**
+> The native plugin registers, calls, answers, mutes, sends DTMF and hangs up
+> on a real **Guition JC4880P443 (ESP32-P4 rev3)** with Tessera's
+> echo-cancelled audio path. It was tested against a local Asterisk account
+> (`1003`) with 0 lost RTP packets; the UI compiled and is installed on the
+> panel. A real call against the owner's external/doorbell PBX still needs the
+> account and the final visual tap-through. The browser card is separately
+> live-tested as described in [docs/LIVE_TEST.md](docs/LIVE_TEST.md).
 
 ---
 
-## The one constraint that shapes this project
+## Native on-device SIP
 
-Tessera runs on ESP32 boards. **SIP.js is a browser library**; a Tessera screen
-cannot run it, and a Tessera plugin is C++ compiled into the screen's firmware
-with no raw sockets. So there are only three honest ways to get SIP onto a
-Tessera panel:
+```text
+  DoorPi / PBX ── SIP/UDP or SIP over WSS ── ESP32-P4 ── I2S/AEC ── mic + speaker
+                          RTP over UDP                 Tessera tile / call card
+```
 
-| Path | What runs where | Status here |
-|---|---|---|
-| **A. Browser card** (this repo) | SIP.js in a browser: HA app, wall tablet, kiosk | **Built; live-tested on a local Asterisk** |
-| **B. SIP bridge in the Tessera add-on** | Asterisk ⇄ a SIP user in the add-on ⇄ the screen's existing talk stream | Designed in [docs/TESSERA.md](docs/TESSERA.md), not built |
-| **C. Native SIP client in a plugin** | SIP/RTP/ICE in C++ on the ESP32 | Rejected: plugin API blocks sockets; scope is far beyond a card |
+The plugin vendors the MIT [`sip_client`](tessera-plugin/components/sip_client/)
+ESPHome component (thanks to eigger/espcomponents) and binds it to Tessera's
+standard audio features:
 
-This repo contains **Path A** plus the pieces that make a Tessera screen a
-useful **remote control** for it: a state helper, a command helper and an
-experimental Tessera plugin tile (`tessera-plugin/`). The browser that owns the
-call can be a tablet in the hallway, the HA companion app, or a kiosk. The
-Tessera panel can show "Front door is calling" and trigger **Answer** on that
-browser.
+- `ts_microphone` — 16 kHz, 16-bit mono, post-AEC on the Guition boards;
+- `ts_speaker` — the screen's resampler speaker.
 
-If you wanted the panel's own speaker and microphone to carry the call, that is
-Path B — read [docs/TESSERA.md](docs/TESSERA.md) and decide before more code is
-written. It is a change to the Tessera add-on, not a plugin.
+One `sip_client` runs per screen, registers as a normal PBX extension, and the
+plugin draws the call UI.
+
+### What the panel does
+
+- **Tile** (`door`), 1×1 to 2×2:
+  - tap the tile body → **call the configured target** (`555` by default);
+  - while ringing → **answer**;
+  - while dialing/connected → **cancel / hang up**;
+  - the bottom **Open** key opens the full call card.
+  - `station` is the second number (`8000` by default), used by the card.
+- **Call card** (`call`, wide):
+  - phase, caller, connected timer, registration dot;
+  - Call door / Call station, Answer, Decline, Cancel, Hang up;
+  - Mute/Unmute (PCM silenced while RTP continues);
+  - Open door (DTMF `1`) and a 3×4 DTMF keypad on screens with room;
+  - Retry registration.
+- **Ring popup** with Answer/Decline, switchable.
+- **Auto answer** switch.
+- Home Assistant buttons for call door, call station, answer, hang up, mute and
+  open door — useful for automations and testing.
+
+### Requirements
+
+- A Tessera screen with **microphone, speaker and PSRAM**: the Guition
+  **JC4880P443** (4.3", 480×800) is the reference, and the plugin declares
+  `requires.features: [microphone, speaker]` and `requires.psram: true`.
+- A SIP account on a PBX reachable from the panel:
+  - UDP SIP (`5060`, or a LAN port such as `5062`) and plain RTP, or
+  - SIP over WSS for signalling; **RTP stays plain UDP**.
+- The PBX must allow the panel's codecs: `ulaw`, `alaw` (PCMU/PCMA). G.722 is
+  available in the component, not offered by this plugin by default.
+- Firmware build with **ESPHome ≥ 2026.9.1** for P4 rev3. The owner's panel
+  needs the local `esp32: engineering_sample: false` override; do not build the
+  rev3 panel with an older ESPHome.
+
+### Install the plugin
+
+The plugin is in this repository under `tessera-plugin/` (0.2.1).
+
+1. In Tessera → **Plugins**, add a link to
+   `https://github.com/Babo96/tessera-sip-card/tree/main/tessera-plugin`
+   (or copy the folder to `<ESPHome config>/tessera-plugins/sip_doorbell/`).
+2. Choose the screen and fill the inputs:
+   `sip_server`, `sip_port`, `sip_user`, `sip_password`, `sip_domain`,
+   `sip_caller`, `sip_transport` (`udp`, `ws` or `wss`).
+3. Add the **SIP doorbell** tile from the Plugins group; choose a size from
+   1×1 to 2×2, set **Call target** and **Station** in the inspector.
+4. Build the screen. The build adds the SIP component and the UI to the
+   firmware; later layout changes do not rebuild it.
+5. On the screen's **Plugins** page (or in Home Assistant), set **Auto answer**
+   and **Ring popup** as wanted.
+
+> **Password:** Tessera forbids `!secret` inside a plugin (`tools/check.py`
+> rejects it), so the SIP password is a **text input**, stored in the plugin
+> record like other plugin values. Use a dedicated extension and a LAN/VPN
+> PBX; rotate it if the app data is exposed.
+
+### PBX example (DoorPi / Asterisk)
+
+DoorPi's existing `transport-udp` is loopback-only for the door station. Add a
+plain SIP transport for panels, without WebRTC/ICE/SRTP:
+
+```ini
+; pjsip.conf — a LAN-only panel transport
+[transport-udp-panel]
+type=transport
+protocol=udp
+bind=0.0.0.0:5062
+
+[1003]
+type=endpoint
+transport=transport-udp-panel
+context=from-internal
+disallow=all
+allow=ulaw,alaw
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+auth=1003
+aors=1003
+callerid="Gang" <1003>
+
+[1003]
+type=auth
+auth_type=userpass
+username=1003
+password=!secret
+[1003]
+type=aor
+max_contacts=1
+remove_existing=yes
+```
+
+- Open **5062/udp** from the LAN only, and keep the RTP range
+  (`10000-20000/udp`) LAN-reachable.
+- The panel calls `555` to pick up DoorPi's parked call, or `8000` to ring the
+  door station.
+- For an external PBX, use its host/port/account in the plugin inputs. WSS
+  protects signalling only; RTP is still plain UDP, so use a LAN, VPN or a
+  firewall policy you trust. There is no SRTP/DTLS/ICE/TURN.
+
+### Build and verify
+
+The plugin was compiled into the real `jc4880p443` firmware with ESPHome
+2026.10.2 / ESP-IDF 5.5.6:
+
+```text
+Flash: 47.5% (3,860,036 bytes of 8,126,464; 52% free)
+RAM:   24.4% (160,182 bytes of 655,360)
+```
+
+On the panel:
+
+- registered as `1003` to Asterisk on `192.168.2.45:5062`;
+- an incoming call was answered automatically (test firmware) and by the
+  plugin's **Answer** action;
+- outgoing `555` and `8000` calls connected;
+- mute, open-door DTMF and hang-up actions executed;
+- RTP with `ulaw`: **502 received / 502 sent, 0 lost** in one call, and
+  **200 / 200, 0 lost** in another.
+
+The Tessera plugin check passes; the host preview refuses the plugin because
+the bench has no microphone/speaker, so the final visual tap-through is on the
+real panel rather than in the render harness.
 
 ---
 
-## What it does
+## Browser card (fallback)
 
-- **Incoming calls**: ringing state with answer/decline, optional auto-answer
-  after a delay (handy for a doorbell), and a ringtone.
-- **Outgoing calls**: one tap calls your pickup extension (`555` by default),
-  or any target via a command helper.
-- **In a call**: live timer, mute/unmute, hang up, DTMF keys you configure
-  (`1` for the door, `2` for the light, …).
-- **Doorbell context**: optional camera snapshot while ringing or connected.
-- **Reads SIP Core's connection details**: if
-  [SIP Core](https://github.com/TECH7Fox/sipcore-hass-integration) is installed
-  and configured, the card takes the WSS URL, PBX and ICE servers from
-  `/api/sip-core/config`; the account comes from SIP Core too unless you
-  override `extension`/`password` (recommended on DoorPi, see
-  [docs/DOORPI.md](docs/DOORPI.md)). Manual settings work without SIP Core.
-- **Automation surface**: fires `tessera_sip_card` events (`ringing`,
-  `answered`, `ended`, …), can write `input_text` state/peer helpers, and takes
-  commands from a helper or an event.
-- **Kiosk-aware**: one user agent per account per page, survives dashboard
-  navigation, reconnects with backoff, and recovers when a hidden tab becomes
-  visible again.
-- **Tessera companion tile** (`tessera-plugin/`, experimental): shows phase and
-  caller on the panel, offers Answer/Decline in a ringing popup, and taps
-  through to the browser card.
+The original card is still here and unchanged for Home Assistant dashboards,
+phones and kiosks. It uses SIP.js in a browser and needs no panel audio.
 
-## Requirements
+- HACS → **Dashboard** → custom repository
+  `https://github.com/Babo96/tessera-sip-card`, install **Tessera SIP Card**.
+- Or copy `dist/tessera-sip-card.js` to `/config/www/` and add it as a
+  JavaScript module.
+- It reuses SIP Core's connection details (WSS/ICE) but should use a dedicated
+  extension, not SIP Core's `100`.
+- Full options, DoorPi flow, events and helpers:
+  [docs/BROWSER_CARD.md](docs/BROWSER_CARD.md).
 
-- Home Assistant over **HTTPS** (WebRTC needs a secure context; `http://` on a
-  LAN address will not get the microphone).
-- A SIP PBX reachable over **WSS** and its **STUN/TURN** servers, e.g. DoorPi's
-  Asterisk on `wss://doorpi.example:57000/ws` and coturn.
-- A SIP account for the browser. **Use a dedicated extension** (for example
-  `103`). This is not optional on a normal DoorPi: SIP Core's frontend module
-  loads on every dashboard and registers its account (`100`) whether or not a
-  SIP Core card is on the page, and DoorPi's AOR has `remove_existing=yes`, so
-  the last registration kicks the other one out.
-- A camera entity for the door, if you want the snapshot.
+The browser card and the native plugin can coexist: the panel no longer needs
+the browser card, but a phone or hallway tablet can still answer through it.
 
-## Install
+---
 
-### HACS (custom repository)
+## Limitations and next work
 
-1. HACS → **Dashboard** (called Frontend in older HACS) → ⋮ → **Custom repositories**.
-2. Add `https://github.com/Babo96/tessera-sip-card` as **Dashboard**.
-3. Install **Tessera SIP Card**, then reload the browser.
+- **No ringtone** on the panel yet; the ring is visual (tile/popup).
+- **No SRTP, DTLS, ICE or TURN.** SIP over WSS encrypts signalling only; RTP is
+  plain UDP. Use a trusted LAN/VPN, or add a secure media path deliberately.
+- **Password is a text plugin input**, not a secret (see above).
+- **One SIP account per screen.** `sip_client` is one instance; changing the
+  account is a build.
+- **No video**; this is an audio doorbell.
+- **Echo/gain** depends on the board's AEC/speaker; the Guition path uses the
+  es8311 feedback AEC. Test the actual enclosure.
+- **Tessera app build server:** the owner's app builds with ESPHome 2026.9.0
+  for P4 and may produce a pre-rev3 image. Use a local ESPHome ≥2026.9.1 build
+  for this panel until the app build server is upgraded.
+- **Visual card audit** on the panel is still open; the tile and card compile,
+  but the render harness cannot draw a microphone/speaker plugin.
 
-### Manual
+## Open questions
 
-1. Copy `dist/tessera-sip-card.js` to `/config/www/tessera-sip-card.js`.
-2. Settings → Dashboards → ⋮ → **Resources** → **Add resource**:
-   `/local/tessera-sip-card.js`, type **JavaScript module**.
-3. Reload the browser.
-
-The built file is committed under `dist/` so HACS can install a tag without a
-build step. Do not edit it by hand; `npm run build` regenerates it.
-
-## Configure
-
-Recommended for DoorPi: take the WSS URL and ICE servers from SIP Core, but
-give the card its **own** SIP extension (the doorbell extension in this
-example):
-
-```yaml
-type: custom:tessera-sip-card
-name: Haustür
-use_sip_core: true            # WSS + ICE from SIP Core
-extension: "103"              # a dedicated PJSIP endpoint
-password: !secret doorpi_sip_card_password
-call_target: "555"            # pick up the parked doorbell call
-call_label: Tür abheben
-camera: camera.doorpi
-```
-
-If you have no SIP Core, or you want every key explicit:
-
-```yaml
-type: custom:tessera-sip-card
-name: Haustür
-use_sip_core: false
-wss_url: wss://doorpi.example:57000/ws
-pbx_server: doorpi.example
-extension: "103"
-password: !secret doorpi_sip_card_password
-call_target: "555"
-ice_servers:
-  - urls: [stun:doorpi.example:3478]
-  - urls: [turns:doorpi.example:5349]
-    username: doorpi
-    credential: !secret doorpi_coturn_secret
-```
-
-### Options
-
-| Key | Default | What |
-|---|---|---|
-| `name` | `Doorbell` | Title of the tile. |
-| `subtitle` | — | Replaces the idle line ("Tap to talk"). |
-| `icon` | `doorbell` | Local icon name while idle. |
-| `use_sip_core` | `true` | Read the account from SIP Core. Set `false` to use only the keys below. |
-| `wss_url` | SIP Core | SIP WebSocket URL, e.g. `wss://doorpi.example:57000/ws`. |
-| `uri` | — | Full account URI, e.g. `sip:103@doorpi.example`. Wins over `extension`. |
-| `extension` | SIP Core | SIP user to register. |
-| `pbx_server` | SIP Core | SIP domain used to build URIs. |
-| `auth_user` | user of `uri` | Authorization username, if it differs. |
-| `password` | SIP Core | SIP password. Prefer `!secret` in YAML mode; the visual editor may store the literal value. |
-| `display_name` | `name` | Display name sent with calls. |
-| `call_target` | `555` | What a tap dials while idle. A bare number or a full `sip:` URI. |
-| `call_label` | `Talk to the door` | Label of the main call key. |
-| `auto_answer` | `false` | Accept incoming calls automatically. |
-| `auto_answer_delay` | `0` | Seconds to wait before auto-answering. |
-| `video` | `false` | Request video (DoorPi has none; leave off). |
-| `dtmf_actions` | `[]` | Keys in a call: `[{label: Open door, digit: "1", icon: door}]`. |
-| `camera` | — | `camera.*` snapshot shown while ringing/connected. |
-| `ringtone` | SIP Core | Ringtone URL. |
-| `id` | `tessera-sip` | Card id in events when several cards share a dashboard. |
-| `event_type` | `tessera_sip_card` | Home Assistant event fired on changes. |
-| `state_entity` | — | `input_text`/`input_select` to write the phase into. With `input_select`, create every phase as an option first. |
-| `peer_entity` | — | Helper to write the caller into. |
-| `event_entity` | — | `input_text` that gets `event\|phase\|peer\|duration\|error\|timestamp` per transition, for a non-admin kiosk. |
-| `command_entity` | — | `input_text` the card watches for `answer`, `call:555`, `dtmf:1`, … |
-| `clear_command` | `false` | Clear the command helper after it runs. |
-| `answer_script` | — | Script/automation to run when a call connects. |
-| `end_script` | — | Script/automation to run when a call ends. |
-| `ice_servers` | SIP Core | WebRTC ICE servers. |
-| `ice_transport_policy` | SIP Core | `all` or `relay`. |
-| `language` | HA language | Force `en` or `de`. |
-| `labels` | — | Override any UI string by its i18n key. |
-| `debug` | `false` | SIP.js and card logging in the browser console. |
-
-### DoorPi: which target?
-
-DoorPi parks a door call when the button is pressed (`baresip` dials `444`,
-Asterisk parks it). Two useful targets:
-
-- **`555` — pick up the parked call.** The visitor is already waiting; audio
-  starts as soon as the call connects. This is the flow in
-  `doorpi/docs/ha-sip-core.md` and the default here.
-- **`8000` — call the door station.** Rings the door; use it when you want to
-  look/listen without a visitor having pressed the button.
-
-If you want the card to ring on its own when someone presses the button, point
-the doorpi ring automation at this extension (SIP Core can ring it) and set
-`auto_answer: true` for a hands-free doorbell. Test the 45 s ring timeout and
-your parking timeout against each other.
-
-## Events and helpers
-
-The card fires one event per transition on `event_type` (default
-`tessera_sip_card`):
-
-```json
-{
-  "card": "tessera-sip",
-  "event": "ringing",
-  "phase": "ringing",
-  "peer": "8000",
-  "direction": "incoming",
-  "timestamp": "2026-11-23T18:00:00.000Z"
-}
-```
-
-`event` is one of `registered`, `unregistered`, `ringing`, `dialing`,
-`answered`, `ended`, `error`. `duration` (seconds) is present on `ended`.
-
-> Home Assistant's `fire_event` WebSocket command requires an **admin** user.
-> A non-admin kiosk still gets `state_entity`, `peer_entity` and `event_entity`;
-> use `event_entity` for automations instead of the event when the dashboard
-> user is not an admin.
-
-Commands can arrive two ways:
-
-- `command_entity` (an `input_text`): write `answer`, `decline`, `hangup`,
-  `call:555`, `dtmf:1`, `mute`, `unmute`, `retry`, `enable_audio`.
-- Event `${event_type}_command` (for example `tessera_sip_card_command`) with
-  `{action: "call", target: "555"}` or `{action: "dtmf", digit: "1"}`.
-
-[`examples/tessera-package.yaml`](examples/tessera-package.yaml) has the
-helpers, template sensor and scripts. [`examples/lovelace-doorpi.yaml`](examples/lovelace-doorpi.yaml)
-has dashboard cards.
-
-## Tessera panel
-
-The panel cannot carry the audio (see the table at the top), but it can be the
-best doorbell annunciator in the house:
-
-1. Install the helpers from `examples/tessera-package.yaml`.
-2. Add `state_entity: input_text.tessera_sip_state`,
-   `peer_entity: input_text.tessera_sip_peer` and
-   `command_entity: input_text.tessera_sip_command` to the card.
-3. Keep the card open on a hallway tablet or kiosk (the browser that answers).
-4. Install the `tessera-plugin/` tile on the panel. It reads
-   `sensor.tessera_sip` and taps through to `script.tessera_sip_toggle`.
-
-![The companion tile on the gang board size (480×800): connected, caller, timer and Hang up](tessera-plugin/docs/preview/jc4880p443-connected.png)
-
-Details, the event flow and the Path B bridge design are in
-[docs/TESSERA.md](docs/TESSERA.md).
-
-## What is verified
-
-Automated, on every push:
-
-- `npm run typecheck`
-- `npm test` — 50 tests: state machine, view derivation, configuration, SIP URI
-  building, SIP Core account selection, ingress URL, command parsing, formatting,
-  and the card element with a fake client (ring → helper + event → command →
-  answer, dial, target).
-- `npm run build` — single ES module, SIP.js and Lit bundled.
-- CI on Node 22 and 24 is green.
-
-Done by hand in the demo (fake SIP client, no PBX):
-
-- idle, ringing, dialing, connected, muted, ended, declined, unregistered,
-  error, audio-blocked, config-error states; light and dark; narrow and wide.
-
-Network: the DoorPi endpoint accepted a WebSocket with the `sip` subprotocol
-from this machine (2026-11-23; no credentials used). Point
-[`tools/check-wss.mjs`](tools/check-wss.mjs) at your own URL to reproduce it.
-
-A **live call** was made against a local Asterisk 20 (WebSocket, `Echo()`):
-registration, outgoing `555`, incoming answer, mute, timer and hang up all
-worked. A PBX restart re-registered the card within about two seconds and a
-call afterwards still worked. Reproduction and limits:
-[docs/LIVE_TEST.md](docs/LIVE_TEST.md).
-
-The **companion plugin** passes Tessera's `tools/check.py` and is rendered in
-the Tessera preview harness; it has **not** been installed on the gang panel
-(no access to the owner's Tessera app or a build/flash).
-
-**Not yet verified**: the same against DoorPi's Asterisk 22 with a parked call,
-real TLS/WSS, TURN, and a real door station. That needs the PBX password and a
-browser on the LAN. The first test should be: register, call `555` with a call
-parked, check two-way audio and DTMF, then hang up; repeat with a
-hidden/backgrounded tab (kiosk recovery). The checklist is in
-[docs/DOORPI.md](docs/DOORPI.md).
-
-**Known limits**: one browser tab per extension (DoorPi's AOR replaces existing
-contacts); no SIP video (DoorPi has none); the panel cannot carry audio in
-Path A.
-
-## Security
-
-- The SIP password is sent to the browser by design (SIP.js needs it). WSS +
-  SRTP protect the media, but anyone with the browser profile can read the
-  password. Use a dedicated extension with a long password, and TURN
-  credentials scoped to your coturn.
-- `fetchWithAuth("/api/sip-core/config")` is authenticated, but the response
-  contains the account password. Treat the dashboard as trusted.
-- Never commit `secrets.yaml` or a real password to this repository. The
-  examples use `!secret`.
-- Prefer `ice_transport_policy: relay` on untrusted networks.
-
-## Development
-
-```sh
-npm install
-npm run dev          # demo at http://127.0.0.1:5173
-npm test
-npm run build
-```
-
-The demo (`demo/`) swaps in a fake SIP client via `setClientFactory()`; it does
-not need Home Assistant or a PBX. For a real call without DoorPi, start the
-local Asterisk fixture and open `demo/live.html`:
-
-```sh
-cd tools/asterisk && docker compose up -d
-cd ../.. && npm run dev
-# http://127.0.0.1:5173/demo/live.html
-```
-
-The real client is in `src/sip/client.ts`; the pure state machine is
-`src/model/state.ts`; the visual seam is `src/ui/contract.ts`.
-
-Architecture: [docs/ARCHITECTURE.md](docs/ARCHITECTURE.md). Troubleshooting:
-[docs/TROUBLESHOOTING.md](docs/TROUBLESHOOTING.md). Security notes:
-[docs/SECURITY.md](docs/SECURITY.md).
-
-## Open questions (for Babo)
-
-1. **Audio endpoint**: browser/tablet (Path A), or do you want the Tessera
-   panel's own mic/speaker via an add-on SIP bridge (Path B)?
-2. **Extension**: which SIP account should the browser register as (`100` is
-   SIP Core's; a dedicated `103` avoids double registration)?
-3. **Target**: `555` (parked pickup) or `8000` (call the door) on tap?
-4. **Panel**: should the companion tile be a tile only, or also a popup with
-   Answer/Decline?
-5. **Publishing**: should this be submitted to HACS and/or the Tessera plugin
-   index, or kept private?
-6. **Plugin repository**: keep the plugin in `tessera-plugin/` (the index supports
-   a path) or split it into its own repo so the Tessera app's link install sees
-   the manifest at the root?
-7. **Auto-pickup**: should the card dial `555` by itself when the doorbell
-   event fires, or always wait for a tap?
+1. Which external SIP server, extension and password should be the final
+   values? The current panel carries a test account (`1003` on the local LAN).
+2. Should the tile body call `555`, `8000`, or be configurable per size? It is
+   already an option; what should the default be?
+3. Add a ringtone, and if so which sound?
+4. Should the panel expose more Home Assistant entities (call state, caller)
+   or keep the UI local?
+5. Should the plugin be submitted to the Tessera plugin index (and the browser
+   card to HACS)?
+6. Is plain RTP on the LAN acceptable, or is a secure-media path required?
 
 Tracked in [issue #1](https://github.com/Babo96/tessera-sip-card/issues/1).
 
 ## Credits
 
 - [Tessera / ESP Screens](https://github.com/MaxGramser/homeassistant_espscreen)
-  by Max Gramser — the visual language and the plugin API.
-- [SIP Core](https://github.com/TECH7Fox/sipcore-hass-integration) by TECH7Fox —
-  the SIP account configuration the card can reuse.
-- [SIP.js](https://sip.js.net/) — the browser SIP stack.
+  by Max Gramser — the UI, plugin API and audio graph.
+- [eigger/espcomponents `sip_client`](https://github.com/eigger/espcomponents) —
+  the MIT SIP stack vendored for the native panel endpoint.
+- [SIP.js](https://sip.js.net/) — the browser fallback card.
 - DoorPi — the SIP doorbell this was built for.
 
-MIT licensed.
+MIT licensed; the vendored SIP component keeps its own MIT/G.722 notices in
+`tessera-plugin/components/sip_client/`.

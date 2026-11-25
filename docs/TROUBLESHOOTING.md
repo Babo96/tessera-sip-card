@@ -1,5 +1,29 @@
 # Troubleshooting
 
+## Native panel plugin
+
+| Symptom | Check |
+|---|---|
+| Tile says **Offline** | Plugin inputs: server IP/name, port (DoorPi LAN example `5062`), user, password, domain, transport `udp`. The PBX must bind a LAN transport, not DoorPi's loopback-only `127.0.0.1:5060`. |
+| `sip_client` registers, no audio | RTP must reach the panel's `local_rtp_port` (7078). Keep the PBX RTP range and the panel on the same LAN/VPN; plain RTP has no ICE/TURN. Check `asterisk -rx "pjsip show channelstats"` for nonzero RX/TX. |
+| Call connects, one-way audio | Codec mismatch (offer `ulaw`/`alaw`), firewall on the RTP range, or the speaker/microphone claimed by another screen feature. Check the asterisk channel stats and the board's AEC path. |
+| No ring | 0.2.x has a visual ring only; there is no ringtone yet. The popup/tile should still show **Ringing**. |
+| Tile body opens the card instead of calling | You are on plugin <0.2.1; update the plugin. In 0.2.1 the body calls and the bottom **Open** key opens the card. |
+| Panel reboots/dark after a Tessera app build | The app's build server may use ESPHome 2026.9.0 for P4 rev3. Build this panel locally with ESPHome ≥2026.9.1 and `esp32: engineering_sample: false`. |
+| Build fails with `NO SPACE LEFT` on the build host | P4 builds are ~2.5 GB each; free old `.esphome/build` directories. |
+| Password change | It is a text plugin input; a change is a build. There is no `!secret` support in a plugin. |
+
+Useful commands:
+
+```sh
+asterisk -rx "pjsip show endpoints"
+asterisk -rx "pjsip show contacts"
+asterisk -rx "pjsip show channelstats"
+uvx --from esphome==2026.10.2 esphome compile <profile>.yaml
+```
+
+## Browser card
+
 Set `debug: true` on the card for one run, open the browser console, and read
 the `[tessera-sip]` lines. Turn it off afterwards.
 

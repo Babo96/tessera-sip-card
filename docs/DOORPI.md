@@ -1,3 +1,62 @@
+# DoorPi: the card and the panel
+
+There are two independent ways to answer DoorPi:
+
+1. **Native panel plugin** (`tessera-plugin/`): the ESP32-P4 registers to
+   Asterisk as its own extension and carries the audio. This is the main path.
+2. **Browser card** (`tessera-sip-card`): SIP.js in a dashboard, for a phone or
+   tablet. The rest of this page describes it.
+
+## Native panel endpoint on DoorPi
+
+DoorPi's `transport-udp` is loopback-only for the door station. Add a LAN
+transport and endpoint for the panel, for example on port 5062:
+
+```ini
+; ansible/roles/sipserver/templates/pjsip.conf.j2
+[transport-udp-panel]
+type=transport
+protocol=udp
+bind=0.0.0.0:5062
+
+[1003]
+type=endpoint
+transport=transport-udp-panel
+context=from-internal
+disallow=all
+allow=ulaw,alaw
+direct_media=no
+rtp_symmetric=yes
+force_rport=yes
+rewrite_contact=yes
+auth=1003
+aors=1003
+callerid="Gang" <1003>
+
+[1003]
+type=auth
+auth_type=userpass
+username=1003
+password={{ doorpi_sip_panel_password }}
+[1003]
+type=aor
+max_contacts=1
+remove_existing=yes
+```
+
+- Add `doorpi_sip_panel_password` to the Ansible Vault and open
+  `5062/udp` from the LAN in UFW; the existing RTP range is already LAN-only.
+- On the panel, set plugin inputs: server = the Pi's LAN name/IP, port `5062`,
+  user `1003`, domain, password, transport `udp`.
+- Tile **Call target** `555` picks up the parked call; **Station** `8000` rings
+  the door station.
+- The native plugin uses PCMU/PCMA, no SRTP/ICE. Keep it on the LAN/VPN.
+
+With that, the panel's own speaker and microphone carry the call. No Home
+Assistant SIP card or browser is involved.
+
+---
+
 # DoorPi: the exact settings
 
 This is the card side of the flow in `doorpi/docs/ha-sip-core.md`.

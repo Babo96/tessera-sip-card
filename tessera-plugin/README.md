@@ -4,7 +4,7 @@ A native SIP phone for the Tessera panel. The ESP32-P4 registers itself to a PBX
 own microphone and speaker, and draws a door tile plus a full-screen call card. Nothing on the panel needs Home
 Assistant, a browser, a WebRTC tab or a companion service for the call.
 
-The separate [tessera-sip-card](https://github.com/MaxGramser/tessera-sip-card) browser card remains a separate
+The separate [tessera-sip-card](https://github.com/Babo96/tessera-sip-card) browser card remains a separate
 Home Assistant dashboard fallback. This plugin does not use it and does not change it.
 
 ## What it is
@@ -49,7 +49,8 @@ only signaling is protected; RTP remains plain UDP and needs reachable ports or 
 - Sizes 1x1 to 2x2.
 - Shows the native phase (Offline, Registering, Ready, Ringing, Calling, Connected, Error), the peer, a registered
   dot and the connected timer.
-- A tap opens the **SIP call** card. The tile itself no longer dials or answers.
+- Tap the tile body to **call the Door number**; while ringing it answers, while dialing/connected it cancels or hangs
+  up. The bottom **Open** key opens the **SIP call** card. Idle tiles also say "Tap to call · Open for keys".
 
 ## The call card
 
@@ -66,7 +67,7 @@ The card is wide and shows the same status, peer and timer, with keys that follo
 
 - **Mute** zeroes the PCM in `sip_client`'s microphone callback and keeps sending RTP, so the PBX still receives
   packets while the microphone is silent.
-- **Open door** sends `dtmf:1` through `sip_client.send_dtmf()`.
+- **Open door** sends DTMF `1` through `sip_client.send_dtmf("1")`.
 - **Retry** asks the client for a fresh REGISTER after a lost link.
 - The DTMF keypad is created only when the card has room for touch-sized keys. The CYD 320x240 keeps the primary
   keys and drops the keypad; the 480x800 panel gets the full card.
@@ -74,15 +75,18 @@ The card is wide and shows the same status, peer and timer, with keys that follo
 
 ## Build and verification
 
-The native component was compiled in the real `jc4880p443` package with ESPHome 2026.10.2:
+The native component was compiled into the real `jc4880p443` package with
+ESPHome 2026.10.2 / ESP-IDF 5.5.6:
 
 ```sh
-cd /tmp/opencode/native-prototype-build
-uvx --from esphome==2026.10.2 esphome compile native-test-plugin.yaml
+uvx --from esphome==2026.10.2 esphome compile <panel-profile>.yaml
 ```
 
-Result: success, 47.4 % flash and 27.6 % RAM used on the P4 build (`native-test.bin` 0x3ad5c0 bytes, 53 % of the app
-partition free). The exact test file points `packages: plugin` at this plugin's `plugin.yaml`.
+Result: success, 47.5 % flash and 24.4 % internal RAM used; 52 % of the app partition free. The concrete build used the
+Tessera `jc4880p443` package, the owner's panel profile and `SIP_*` include vars.
+
+On the real panel it registered as `1003`, answered/placed calls, muted, sent DTMF and hung up; Asterisk reported
+502/502 and 200/200 RTP packets with 0 lost at `ulaw`.
 
 `tools/check.py` passes with the local Tessera manifest and boards. The host render harness refuses a plugin that
 requires microphone and speaker, because the firmware built for a computer has neither, so there are no `.preview`
@@ -96,6 +100,13 @@ images for this version. The UI must be checked on the real panel.
 - **Echo**: the mic is the post-AEC es8311 path, but speaker placement and gain still matter on a real panel.
 - **Registration errors**: the client has no separate "registration failed" state; after a link that was once up, the
   tile shows Error, and Retry asks for a fresh REGISTER. Before the first registration it shows Offline/Registering.
-- **No ringtone**: the speaker is not used for ringing in 0.2.0.
+- **No ringtone**: the speaker is not used for ringing in 0.2.1.
 - **Password storage**: the password is a plugin text input, not an encrypted secret.
 - **Browser card**: the `tessera-sip-card` project is unchanged and is not used by this plugin.
+- **Tessera app build server**: a P4 rev3 panel needs ESPHome >= 2026.9.1 and `esp32: engineering_sample: false`.
+  The owner's app was on 2026.9.0, so use a local build for this panel until the server is upgraded.
+
+## Home Assistant controls
+
+The plugin also creates buttons for call door, call station, answer, hang up, mute and open-door DTMF. They use the
+same native calls as the tile/card and are useful in automations and for testing without touching the glass.

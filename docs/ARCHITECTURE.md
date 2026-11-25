@@ -1,5 +1,43 @@
 # Architecture
 
+The repository has two independent endpoints:
+
+1. **Native panel plugin** (`tessera-plugin/`, main path) — SIP registration,
+   RTP and audio on the ESP32-P4, with a Tessera tile/card UI.
+2. **Browser card** (`src/`, fallback) — SIP.js in a Home Assistant dashboard.
+
+## Native panel plugin
+
+```text
+sip_client (vendored ESPHome component)
+  ├─ UDP/WS/WSS signalling: REGISTER, INVITE, ACK, BYE, CANCEL
+  ├─ SDP: PCMU/PCMA (G.711), optional DTMF telephone-event
+  ├─ RTP: 20 ms packets, jitter buffer, PCM to/from the codec
+  └─ mic/speaker: ts_microphone (16 kHz, post-AEC) / ts_speaker
+        ▲
+        │ callbacks: registered, incoming(caller), connected, ended, dtmf
+        │
+sip_doorbell (Tessera plugin component)
+  ├─ tile: phase, peer, timer, registered dot, tap-to-call, Open key
+  ├─ card: Answer/Decline/Cancel/Hangup, mute, DTMF, target/station
+  ├─ popup: Answer/Decline while ringing
+  └─ switches: auto answer, ring popup
+```
+
+- `plugin.yaml` creates one `sip_client` (`id: sip`) and one `sip_doorbell`
+  (`id: sip_doorbell_plugin`), with callbacks wired between them.
+- The plugin calls `SipClient::call/answer/hangup/send_dtmf` directly; there is
+  no Home Assistant helper and no browser.
+- `set_mic_muted()` zeroes PCM while RTP keeps flowing.
+- The tile and card are redrawn from the native state on `on_interval`/`on_tick`.
+- The component vendors eigger/espcomponents `sip_client` (MIT). Two source
+  patches keep Tessera's plugin check happy (`delay` → `vTaskDelay`,
+  `xTaskCreate` → `std::thread`) and add state/mute/retry accessors.
+
+Limits: no SRTP/DTLS/ICE/TURN, plain RTP, one client/account per screen.
+
+## Browser card
+
 The card is deliberately small and split along one seam: everything that needs
 a PBX or a browser is on one side, everything that decides what the card says is
 pure and tested on the other.

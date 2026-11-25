@@ -1,4 +1,33 @@
-# Live test against a local Asterisk
+# Live tests
+
+## Native panel SIP (ESP32-P4 rev3)
+
+Date: 2026-11-25. Device: Guition **JC4880P443**, Tessera firmware built
+locally with ESPHome 2026.10.2 / ESP-IDF 5.5.6. PBX: the local Asterisk 20
+fixture below, UDP transport on port 5062, extension `1003`, PCMU.
+
+The panel firmware included the vendored `sip_client` and the Tessera audio
+graph (`ts_microphone` post-AEC, `ts_speaker`). Results:
+
+- `REGISTER` accepted; contact `1003@192.168.2.93` visible in Asterisk.
+- Incoming call: `channel originate PJSIP/1003 application Echo` rang and was
+  answered (auto-answer in the test build, then the plugin's Answer action).
+- Outgoing: `555` and `8000` connected.
+- Actions: mute, open-door DTMF (`1`), hang up.
+- RTP (Asterisk `pjsip show channelstats`): `ulaw`, 502 received / 502 sent,
+  0 lost; a second call 200 / 200, 0 lost.
+- Firmware: 47.5% flash (3,860,036 / 8,126,464, 52% free), 24.4% internal RAM.
+
+Not measured: acoustic quality, echo in the final enclosure, a real external
+PBX, SRTP/TURN, and a visual tap-through of the card. The card and tile compile
+and are installed; the Tessera host preview cannot build a microphone/speaker
+plugin.
+
+The PBX fixture is in `tools/asterisk/`; the panel used `192.168.2.45:5062`.
+
+## Browser card
+
+# Browser card against a local Asterisk
 
 Date: 2026-11-23. Browser: Chromium through Playwright, on this machine.
 Card: the worktree at `main` (before the final UI polish).

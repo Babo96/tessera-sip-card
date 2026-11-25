@@ -1,17 +1,20 @@
-# Tessera SIP Card
+# Tessera SIP
 
-A SIP.js doorbell card for Home Assistant with the rounded, calm look of a
-Tessera tile. Answer the door, talk, mute, send DTMF and hang up from the
-dashboard.
+A native SIP phone for Tessera panels plus an optional SIP.js card for Home
+Assistant dashboards.
 
-- Works with DoorPi/Asterisk: pick up the parked call on `555` with one tap.
-- Reuses the SIP Core integration's account, WSS URL and ICE servers, or takes
-  manual settings.
-- Fires events and writes optional helpers, so a Tessera panel can show the
-  call and trigger answer/hang up through a companion plugin.
-- No backend, no custom integration: one JavaScript module.
+**Native panel plugin** (`tessera-plugin/`): the ESP32-P4 registers to your PBX
+itself, carries the call on its own microphone and speaker, and draws a
+doorbell tile and a full call card — Answer/Decline/Hang up, mute, open-door
+DTMF, keypad, auto-answer and a ring popup. Configurable server, account and
+tile targets; 1×1 to 2×2 tiles.
 
-See the README for installation, the full option table and the honest
-constraint: SIP.js runs in the browser, so a Tessera ESP32 screen is the
-annunciator and remote, not the audio endpoint. `docs/TESSERA.md` explains the
-add-on bridge that would change that.
+No browser or Home Assistant helper is needed for the panel path. Tested on a
+Guition JC4880P443 (P4 rev3) with a local Asterisk: registration, incoming and
+outgoing calls, 0 lost RTP packets.
+
+**Browser card** (`tessera-sip-card`): SIP.js in a dashboard for phones and
+tablets; full details in `docs/BROWSER_CARD.md`.
+
+Plain RTP (no SRTP/ICE/TURN); use a trusted LAN/VPN. The SIP password is a text
+plugin input, not a vault secret.

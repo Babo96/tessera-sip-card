@@ -1,3 +1,4 @@
+# BROWSER CARD ONLY. The native Tessera plugin does its own SIP and needs none of these helpers.
 # DoorPi / SIP Core: WSS + ICE from SIP Core, a dedicated extension for the card.
 #
 # Why the extension: SIP Core's frontend module registers its own account on

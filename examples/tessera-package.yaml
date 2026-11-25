@@ -1,3 +1,4 @@
+# BROWSER CARD ONLY. The native Tessera plugin does its own SIP and needs none of these helpers.
 # Tessera SIP bridge: helpers, a template sensor and scripts.
 #
 # Put this in configuration.yaml (or a package) and reload YAML. The browser

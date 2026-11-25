@@ -1,5 +1,22 @@
 # Security notes
 
+## Native panel plugin
+
+- The SIP password is a **text plugin input** in Tessera; `!secret` inside a
+  plugin is rejected by Tessera's checker. It is stored in the plugin record,
+  not in the layout or logs, but it is not a vault. Use a dedicated extension,
+  a LAN/VPN PBX, and rotate it if the app data is exposed.
+- SIP signalling can use WSS, but **RTP is plain UDP** (no SRTP/DTLS/ICE/TURN).
+  Anyone on the path can listen. Keep the panel on a trusted LAN/VPN, or add a
+  secure media gateway deliberately.
+- Open only the panel's SIP port (e.g. 5062/udp) and the RTP range to the LAN.
+  Do not expose plain SIP/RTP to the WAN.
+- The vendored `sip_client` opens UDP sockets from the screen. This is a
+  deliberate exception to Tessera's usual "data through the add-on" rule.
+- The panel has no ringtone yet; no audio is recorded by the plugin.
+
+## Browser card
+
 ## The password is in the browser
 
 SIP.js authenticates from the browser, so the SIP account's password must reach
