@@ -57,7 +57,7 @@ Assistant SIP card or browser is involved.
 
 ---
 
-# DoorPi: the exact settings
+# Browser card: the exact settings
 
 This is the card side of the flow in `doorpi/docs/ha-sip-core.md`.
 

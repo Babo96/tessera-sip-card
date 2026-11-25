@@ -25,9 +25,7 @@ plugin.
 
 The PBX fixture is in `tools/asterisk/`; the panel used `192.168.2.45:5062`.
 
-## Browser card
-
-# Browser card against a local Asterisk
+## Browser card against a local Asterisk
 
 Date: 2026-11-23. Browser: Chromium through Playwright, on this machine.
 Card: the worktree at `main` (before the final UI polish).

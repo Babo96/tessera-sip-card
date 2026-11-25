@@ -15,7 +15,6 @@
   deliberate exception to Tessera's usual "data through the add-on" rule.
 - The panel has no ringtone yet; no audio is recorded by the plugin.
 
-## Browser card
 
 ## The password is in the browser
 
