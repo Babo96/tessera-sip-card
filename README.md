@@ -155,7 +155,7 @@ RAM:   24.4% (160,182 bytes of 655,360)
 
 On the panel:
 
-- registered as `1003` to Asterisk on `192.168.2.45:5062`;
+- registered as `1003` to Asterisk on `<pbx-host>:5062`;
 - an incoming call was answered automatically (test firmware) and by the
   plugin's **Answer** action;
 - outgoing `555` and `8000` calls connected;
