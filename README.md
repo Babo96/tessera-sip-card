@@ -18,10 +18,10 @@ in [docs/BROWSER_CARD.md](docs/BROWSER_CARD.md).
 > **Status**
 > The native plugin registers, calls, answers, mutes, sends DTMF and hangs up
 > on a real **Guition JC4880P443 (ESP32-P4 rev3)** with Tessera's
-> echo-cancelled audio path. It was tested against a local Asterisk account
-> (`1003`) with 0 lost RTP packets; the UI compiled and is installed on the
-> panel. A real call against the owner's external/doorbell PBX still needs the
-> account and the final visual tap-through. The browser card is separately
+> echo-cancelled audio path. It is registered to the owner's DoorPi as **8001**
+> and was exercised against a local Asterisk account (`1003`) with 0 lost RTP
+> packets. The card is installed on the panel; the final call into the door
+> station depends on baresip/8000 being up. The browser card is separately
 > live-tested as described in [docs/LIVE_TEST.md](docs/LIVE_TEST.md).
 
 ---

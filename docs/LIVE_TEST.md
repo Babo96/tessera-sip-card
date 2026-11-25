@@ -17,6 +17,11 @@ graph (`ts_microphone` post-AEC, `ts_speaker`). Results:
 - RTP (Asterisk `pjsip show channelstats`): `ulaw`, 502 received / 502 sent,
   0 lost; a second call 200 / 200, 0 lost.
 - Firmware: 47.5% flash (3,860,036 / 8,126,464, 52% free), 24.4% internal RAM.
+- **Real DoorPi registration:** the panel also registered as `8001` to the
+  owner's Asterisk (LAN UDP), contact `8001@<panel-ip>`. A call to `555` is
+  accepted, but DoorPi's `baresip` extension `8000` was inactive at the time,
+  so `555` reached the fallback `Dial(PJSIP/8000)` and returned 404. That is a
+  door-station service state, not the SIP endpoint.
 
 Not measured: acoustic quality, echo in the final enclosure, a real external
 PBX, SRTP/TURN, and a visual tap-through of the card. The card and tile compile
